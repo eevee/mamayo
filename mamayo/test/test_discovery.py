@@ -5,7 +5,7 @@ import pytest
 
 def basic_mamayo_app_directory():
     "The most basic mamayo app discoverable is an empty directory with mamayo.conf."
-    return ff.Directory({'mamayo.conf': ff.File('')})
+    return ff.Directory({'application.wsgi': ff.File('')})
 
 def test_root_as_application():
     "The document root is a possible place for a mamayo app."

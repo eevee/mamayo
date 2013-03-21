@@ -15,7 +15,7 @@ class Explorer(object):
     def explore(self):
         self.applications = set()
         for path in self.wsgi_root.walk():
-            conf = path.child('mamayo.conf')
+            conf = path.child('application.wsgi')
             if not conf.exists():
                 continue
             segments_between = path.segmentsFrom(self.wsgi_root)

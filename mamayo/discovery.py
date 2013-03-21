@@ -5,6 +5,9 @@ import operator
 class NoSuchApplicationError(Exception):
     "No application could be found with the specified criteria."
 
+def is_not_application(path):
+    return not path.child('application.wsgi').exists()
+
 class Explorer(object):
     "I discover mamayo applications."
 
@@ -14,9 +17,8 @@ class Explorer(object):
 
     def explore(self):
         self.applications = set()
-        for path in self.wsgi_root.walk():
-            conf = path.child('application.wsgi')
-            if not conf.exists():
+        for path in self.wsgi_root.walk(is_not_application):
+            if is_not_application(path):
                 continue
             segments_between = path.segmentsFrom(self.wsgi_root)
             app = MamayoApplication(path, segments_between)

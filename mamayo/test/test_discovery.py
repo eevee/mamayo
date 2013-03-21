@@ -63,8 +63,8 @@ def test_basic_applications_with_cruft():
     assert e.application_from_segments(['bar']).path == app2
     assert e.application_from_segments(['baz']).path == app3
 
-def test_nested_applications():
-    "App directories can be contained in other app directories."
+def test_nested_applications_fails():
+    "App directories can _not_ be contained in other app directories."
     app1 = basic_mamayo_app_directory()
     app2 = basic_mamayo_app_directory()
     app1.contents['bar'] = app2
@@ -73,10 +73,10 @@ def test_nested_applications():
     root = ff.Directory(dict(foo=app1))
     e = Explorer(root)
     e.explore()
-    assert {app.path for app in e.applications} == {app1, app2, app3}
+    assert {app.path for app in e.applications} == {app1}
     assert e.application_from_segments(['foo']).path == app1
-    assert e.application_from_segments(['foo', 'bar']).path == app2
-    assert e.application_from_segments(['foo', 'bar', 'baz']).path == app3
+    assert e.application_from_segments(['foo', 'bar']).path == app1
+    assert e.application_from_segments(['foo', 'bar', 'baz']).path == app1
 
 def test_fetching_nonextant_applications():
     "application_from_segments raises NoSuchApplicationError on failure."

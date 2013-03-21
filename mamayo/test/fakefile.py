@@ -17,6 +17,9 @@ class NonextantThing(object):
     def walk(self, descend=None):
         return [self]
 
+    def segmentsFrom(self, ancestor):
+        raise ValueError('segmentsFrom on nonextant thing')
+
 _nonextant = NonextantThing()
 
 class File(object):
@@ -40,6 +43,15 @@ class File(object):
     def walk(self, descend=None):
         return [self]
 
+    def segmentsFrom(self, ancestor):
+        return ancestor._segmentsTo(self)
+
+    def _segmentsTo(self, descendant):
+        if self is descendant:
+            return []
+        else:
+            raise ValueError()
+
 class Directory(object):
     def __init__(self, contents):
         self.contents = contents
@@ -62,3 +74,18 @@ class Directory(object):
                     yield subchild
             else:
                 yield child
+
+    def segmentsFrom(self, ancestor):
+        return ancestor._segmentsTo(self)
+
+    def _segmentsTo(self, descendant):
+        if self is descendant:
+            return []
+        for name, child in self.contents.iteritems():
+            try:
+                segments_above = child._segmentsTo(descendant)
+            except ValueError:
+                pass
+            else:
+                return [name] + segments_above
+        raise ValueError()

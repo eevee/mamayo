@@ -1,9 +1,7 @@
 from mamayo.application import MamayoApplication
+from mamayo.errors import NoSuchApplicationError
 
 import operator
-
-class NoSuchApplicationError(Exception):
-    "No application could be found with the specified criteria."
 
 def is_not_application(path):
     return not path.child('application.wsgi').exists()

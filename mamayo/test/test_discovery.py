@@ -1,5 +1,6 @@
 from mamayo.test import fakefile as ff
-from mamayo.discovery import Explorer, NoSuchApplicationError
+from mamayo.discovery import Explorer
+from mamayo.errors import NoSuchApplicationError
 
 import pytest
 

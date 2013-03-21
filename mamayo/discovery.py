@@ -1,5 +1,10 @@
 from mamayo.application import MamayoApplication
 
+import operator
+
+class NoSuchApplicationError(Exception):
+    "No application could be found with the specified criteria."
+
 class Explorer(object):
     "I discover mamayo applications."
 
@@ -13,5 +18,15 @@ class Explorer(object):
             conf = path.child('mamayo.conf')
             if not conf.exists():
                 continue
-            app = MamayoApplication(path)
+            segments_between = path.segmentsFrom(self.wsgi_root)
+            app = MamayoApplication(path, segments_between)
             self.applications.add(app)
+
+    def application_from_segments(self, segments):
+        sorted_applications = sorted(
+            self.applications, key=operator.attrgetter('segment_count'), reverse=True)
+        for app in sorted_applications:
+            truncated_segments = segments[:app.segment_count]
+            if truncated_segments == app.leading_segments:
+                return app
+        raise NoSuchApplicationError()

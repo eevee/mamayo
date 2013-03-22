@@ -3,10 +3,15 @@ from itertools import chain
 from mamayo.application import MamayoChildApplication
 from mamayo.errors import NoSuchApplicationError
 
-from twisted.internet.inotify import INotify
-from twisted.internet.inotify import (
-    IN_CREATE, IN_MOVED_TO,
-    IN_DELETE, IN_MOVED_FROM, IN_DELETE_SELF, IN_MOVE_SELF, IN_UNMOUNT)
+try:
+    from twisted.internet.inotify import INotify
+    from twisted.internet.inotify import (
+        IN_CREATE, IN_MOVED_TO,
+        IN_DELETE, IN_MOVED_FROM, IN_DELETE_SELF, IN_MOVE_SELF, IN_UNMOUNT)
+except ImportError:
+    INotify = None
+
+from twisted.internet import task
 from twisted.python import log
 
 def looks_like_application(path):
@@ -28,17 +33,29 @@ class ApplicationRegistry(object):
         self.watch()
 
     def scan(self):
-        for path in self.wsgi_root.walk(is_not_application):
+        new_applications = set()
+        old_applications = set(app.path for app in self.applications.itervalues())
+        for path in self.wsgi_root.walk():
             if is_not_application(path):
                 continue
-            self.register(path)
+            new_applications.add(path)
 
-    def watch(self):
-        notifier = INotify()
-        notifier.startReading()
-        notifier.watch(self.wsgi_root,
-            IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM | IN_DELETE_SELF | IN_MOVE_SELF | IN_UNMOUNT,
-            callbacks=[self.on_fs_change], autoAdd=True, recursive=True)
+        for path in new_applications - old_applications:
+            self.register(path)
+        for path in old_applications - new_applications:
+            self.unregister(path)
+
+    if INotify is not None:
+        def watch(self):
+            notifier = INotify()
+            notifier.startReading()
+            notifier.watch(self.wsgi_root,
+                IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM | IN_DELETE_SELF | IN_MOVE_SELF | IN_UNMOUNT,
+                callbacks=[self.on_fs_change], autoAdd=True, recursive=True)
+    else:
+        def watch(self):
+            self._scan_looper = task.LoopingCall(self.scan)
+            self._scan_looper.start(5)
 
     def _debug_notify(self, notifier, path, mask):
         from twisted.internet.inotify import humanReadableMask
@@ -59,6 +76,14 @@ class ApplicationRegistry(object):
         self.applications[key] = app
         self.application_name_map[name] = app
         app.spawn_runner()
+
+    def unregister(self, path):
+        key = tuple(path.segmentsFrom(self.wsgi_root))
+        app = self.applications[key]
+        import pdb; pdb.set_trace()
+        self.applications[key].destroy()
+        del self.applications[key]
+        del self.application_name_map[app.name]
 
     def on_fs_change(self, notifier, path, mask):
         # TODO inotify is hard.  in the case of a move, we only get one
@@ -85,8 +110,7 @@ class ApplicationRegistry(object):
 
             if key in self.applications:
                 log.msg("Removing child application at", path)
-                self.applications[key].destroy()
-                del self.applications[key]
+                self.unregister(path)
 
     def application_from_segments(self, segments):
         app = self.applications.get(tuple(segments))

@@ -39,10 +39,15 @@ class ApplicationStatusResource(Resource):
                 count,
             ])
 
+        log_size = None
+        if self.application.log_path is not None:
+            log_size = self.application.log_path.getsize()
+
         return LOOKUP.get_template('app-status.mako').render(
             request=request,
             app=app,
             flot_data=json.dumps([flot_series]),
+            log_size=log_size,
         )
 
     def render_POST(self, request):

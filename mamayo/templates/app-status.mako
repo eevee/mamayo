@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf8">
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script> 
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
     ## XXX this is so rude
     <script src="http://www.flotcharts.org/javascript/jquery.flot.min.js"></script>
     <script src="http://www.flotcharts.org/flot/jquery.flot.time.js"></script>
@@ -89,6 +89,10 @@
                 Not running
                 % endif
             </dd>
+            % if log_size is not None:
+            <dt>Gunicorn log</dt>
+            <dd><a href="${app.name}/log">${log_size} bytes</a></dd>
+            % endif
             <dt>Requests served</dt>
             <dd>${app.requests_finished}</dd>
             <dt>Requests histogram</dt>

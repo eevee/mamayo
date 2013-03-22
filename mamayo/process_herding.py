@@ -1,6 +1,6 @@
 import os
 
-from twisted.internet.error import AlreadyCalled
+from twisted.internet.error import AlreadyCalled, ProcessTerminated
 from twisted.internet.protocol import ProcessProtocol
 from twisted.protocols.basic import LineReceiver
 from twisted.python.filepath import FilePath
@@ -37,6 +37,7 @@ class AdHocCommandParser(LineReceiver):
 class GunicornProcessProtocol(ProcessProtocol):
     respawn_delay = 2
     should_respawn = True
+    failure_limit = 10
 
     _respawn_delayed_call = None
 
@@ -46,6 +47,8 @@ class GunicornProcessProtocol(ProcessProtocol):
         self.reactor = reactor
         self.entry_point = 'application:application'
         self.running = False
+        self.failure_count = 0
+        self.failure_throttled = False
 
         self.line_receiver = AdHocCommandParser(self)
 
@@ -60,6 +63,8 @@ class GunicornProcessProtocol(ProcessProtocol):
     def spawn(self):
         if self.running:
             return
+
+        self.failure_throttled = False
 
         # If we were waiting to respawn, spawn immediately instead
         self._cancel_respawn()
@@ -95,6 +100,7 @@ class GunicornProcessProtocol(ProcessProtocol):
         self.running = True
 
     def respawn(self):
+        self.failure_count = 0
         if self.running:
             self.transport.loseConnection()
             self.transport.signalProcess("TERM")
@@ -112,9 +118,16 @@ class GunicornProcessProtocol(ProcessProtocol):
 
     def processEnded(self, reason):
         self.running = False
+        if reason.check(ProcessTerminated) and reason.value.exitCode == 3:
+            # TODO reset this count when the worker is 'up'
+            self.failure_count += 1
         self.mamayo_app.runner_port = None
         log.err(reason, 'gunicorn runner for app %s died' % (self.mamayo_app.name,))
-        if self.should_respawn:
+        if self.failure_limit is not None and self.failure_count >= self.failure_limit:
+            log.msg('app %s failed to start %d times; giving up' % (self.mamayo_app.name,
+                                                                    self.failure_count))
+            self.failure_throttled = True
+        elif self.should_respawn:
             log.msg('respawning gunicorn for app %s in %ss' % (self.mamayo_app.name,
                                                                self.respawn_delay))
             self._respawn_delayed_call = self.reactor.callLater(self.respawn_delay, self.spawn)

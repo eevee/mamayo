@@ -3,12 +3,18 @@ from datetime import datetime
 
 from twisted.internet import reactor
 from twisted.web.proxy import ReverseProxyResource
-from twisted.web.resource import Resource, NoResource
+from twisted.web.resource import Resource, NoResource, ErrorPage
 
 from mamayo.errors import NoSuchApplicationError
 from mamayo.process_herding import GunicornProcessProtocol
 
 _no_resource = NoResource()
+_app_down = ErrorPage(
+    503, 'Backend Starting',
+    "The backend for this application is starting up; try again soon.")
+_app_failing = ErrorPage(
+    503, 'Backend Failing',
+    "The backend for this application is failing to start.")
 
 class MamayoChildApplication(object):
     # Number of seconds in each histogram bit
@@ -44,11 +50,10 @@ class MamayoChildApplication(object):
     def as_resource(self):
         # TODO there's a delay before gunicorn actually finishes starting; Do
         # Something in the meantime?
-        if self.runner_port is None:
-            # TODO should distinguish this from a 404: either the child has yet
-            # to start, or it /won't/ start, or we don't recognize this
-            # endpoint as a wsgi app
-            return _no_resource
+        if self.runner is not None and self.runner.failure_count > 0:
+            return _app_failing
+        elif self.runner_port is None:
+            return _app_down
         else:
             self.log_request()
             return ReverseProxyResource('localhost', self.runner_port, self.mount_url)
@@ -77,8 +82,15 @@ class MamayoChildApplication(object):
 
     @property
     def running(self):
-        return self.runner is not None and self.runner.running
+        return self.runner_port is not None
 
+    @property
+    def failing(self):
+        return self.runner is not None and self.runner.failure_count > 0
+
+    @property
+    def failed(self):
+        return self.runner is not None and self.runner.failure_throttled
 
 class MamayoDispatchResource(Resource):
     def __init__(self, explorer):

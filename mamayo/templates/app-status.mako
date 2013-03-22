@@ -100,10 +100,14 @@
             <dd>${app.path.path}</dd>
             <dt>Status</dt>
             <dd>
-                % if app.running:
+                % if app.failed:
+                Failed to start
+                % elif app.failing:
+                Failing to start
+                % elif app.running:
                 Running
                 % else:
-                Not running
+                Starting
                 % endif
             </dd>
             % if log_size is not None:

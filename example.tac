@@ -1,5 +1,5 @@
 from mamayo.application import MamayoDispatchResource
-from mamayo.discovery import ApplicationRegistry
+from mamayo.registry import ApplicationRegistry
 from mamayo.status import MamayoStatusResource
 
 from twisted.application import service, internet

@@ -11,13 +11,13 @@ class ApplicationStatusResource(Resource):
         return renderElement(request, body)
 
 class ApplicationListResource(Resource):
-    def __init__(self, explorer):
+    def __init__(self, registry):
         Resource.__init__(self)
-        self.explorer = explorer
+        self.registry = registry
 
     def render_GET(self, request):
         applications = []
-        for app in self.explorer.applications:
+        for app in self.registry.applications.values():
             link = tags.a(tags.tt(app.name), ' at ', tags.tt(app.path.path),
                           href=app.name)
             applications.append(tags.li(link))
@@ -28,13 +28,13 @@ class ApplicationListResource(Resource):
         return renderElement(request, body)
 
 class MamayoStatusResource(Resource):
-    def __init__(self, explorer):
+    def __init__(self, registry):
         Resource.__init__(self)
-        self.explorer = explorer
-        self.putChild('', ApplicationListResource(self.explorer))
+        self.registry = registry
+        self.putChild('', ApplicationListResource(self.registry))
 
     def getChild(self, name, request):
-        app = self.explorer.application_name_map.get(name)
+        app = self.registry.application_name_map.get(name)
         if app is None:
             return NoResource()
         return ApplicationStatusResource(app)

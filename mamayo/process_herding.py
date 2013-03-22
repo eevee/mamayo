@@ -44,17 +44,20 @@ class GunicornProcessProtocol(ProcessProtocol):
 
         self.line_receiver = AdHocCommandParser(self)
 
-    def spawn(self):
-        if self.running:
-            return
-
-        # If we were waiting to respawn, spawn immediately instead
+    def _cancel_respawn(self):
         if self._respawn_delayed_call is not None:
             try:
                 self._respawn_delayed_call.cancel()
             except AlreadyCalled:
                 pass
         self._respawn_delayed_call = None
+
+    def spawn(self):
+        if self.running:
+            return
+
+        # If we were waiting to respawn, spawn immediately instead
+        self._cancel_respawn()
 
         # Assemble environment: PYTHONPATH needs to start in the app's root
         env = os.environ.copy()
@@ -95,6 +98,16 @@ class GunicornProcessProtocol(ProcessProtocol):
             log.msg('respawning gunicorn for app %s in %ss' % (self.mamayo_app.name,
                                                                self.respawn_delay))
             self._respawn_delayed_call = self.reactor.callLater(self.respawn_delay, self.spawn)
+        else:
+            log.msg('not respawning gunicorn for app %s' % (self.mamayo_app.name,))
 
     def set_port(self, port):
         self.mamayo_app.runner_port = port
+
+    def destroy(self):
+        self._cancel_respawn()
+        self.should_respawn = False
+        if not self.running:
+            return
+        self.transport.loseConnection()
+        self.transport.signalProcess("TERM")

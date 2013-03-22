@@ -38,10 +38,8 @@ class MamayoChildApplication(object):
         """Kill me off!"""
         # TODO should this wait X time for the child to perhaps finish handling
         # its requests?
-        if self.runner:
-            self.runner.transport.loseConnection()
-            self.runner.transport.signalProcess("TERM")
-            self.runner = None
+        if self.runner is not None:
+            self.runner.destroy()
             self.runner_port = None
 
 

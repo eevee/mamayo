@@ -11,5 +11,5 @@ def when_ready(server):
     sockname = server.LISTENERS[0].sock.getsockname()
     port = sockname[1]
 
-    with os.fdopen(3, 'w') as f:
+    with os.fdopen(352, 'w') as f:
         f.write('set-port %d\n' % port)

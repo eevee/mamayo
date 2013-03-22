@@ -1,3 +1,6 @@
+from collections import defaultdict
+from datetime import datetime
+
 from twisted.internet import reactor
 from twisted.web.proxy import ReverseProxyResource
 from twisted.web.resource import Resource, NoResource
@@ -13,6 +16,10 @@ class MamayoChildApplication(object):
         self.name = name
         self.runner = None
         self.runner_port = None
+
+        # Stat tracking
+        self.requests_finished = 0
+        self.request_histogram = defaultdict(int)
 
     def spawn_runner(self):
         """Run the WSGI runner in a child process."""
@@ -38,7 +45,17 @@ class MamayoChildApplication(object):
             # endpoint as a wsgi app
             return _no_resource
         else:
+            self.log_request()
             return ReverseProxyResource('localhost', self.runner_port, "/")
+
+    def log_request(self):
+        """Remember that a request happened, like, right now."""
+        # TODO candidate for breaking out into a (more persistent) stats object
+        # once we know what all this is going to do
+        self.requests_finished += 1
+        now = datetime.utcnow()
+        now = now.replace(microsecond=0, second=now.second - now.second % 30)
+        self.request_histogram[now] += 1
 
     def destroy(self):
         """Kill me off!"""

@@ -14,7 +14,12 @@ class ApplicationStatusResource(Resource):
                 tags.dt('Location'),
                 tags.dd(app.path.path),
                 tags.dt('Status'),
-                tags.dd('Running' if app.running else 'Not running')),
+                tags.dd('Running' if app.running else 'Not running'),
+                tags.dt('Requests served'),
+                tags.dd(str(app.requests_finished)),
+                tags.dt('Request histogram'),
+                tags.dd(repr(app.request_histogram)),
+            ),
             tags.form(
                 tags.button('Respawn runner', name='action', value='respawn'),
                 method='post',

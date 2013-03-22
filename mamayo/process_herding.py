@@ -22,11 +22,16 @@ class AdHocCommandParser(LineReceiver):
         """Dispatches commands from the child.  So far there's only one.  And
         you have to use it.  Or everything dies.
         """
-        command, arg = line.split(' ')
-        arg = int(arg)
-        assert command == 'set-port'
+        args = line.split(' ')
+        command = args.pop(0)
 
-        self.protocol.set_port(arg)
+        if command == 'set-port':
+            port = int(args[0])
+            self.protocol.set_port(port)
+        elif command == 'request-done':
+            self.protocol.track_request_done()
+        else:
+            log.error("Child is babbling nonsense: {0!r}".format(line))
 
 
 class GunicornProcessProtocol(ProcessProtocol):
@@ -75,8 +80,8 @@ class GunicornProcessProtocol(ProcessProtocol):
                 '-c', FilePath(__file__).parent().child('gunicorn_config.conf.py').path,
                 self.entry_point,
             ],
-            # fd 3 and 4 are used as an out-of-band comm channel
-            childFDs={0: 0, 1: 1, 2: 2, 3: "r", 4: "w"},
+            # fd 352 and 353 are used as an out-of-band comm channel
+            childFDs={0: 0, 1: 1, 2: 2, 352: "r", 353: "w"},
             env=env,
         )
         self.running = True
@@ -92,10 +97,10 @@ class GunicornProcessProtocol(ProcessProtocol):
         self.transport.closeStdin()
 
     def childDataReceived(self, fd, data):
-        if fd == 3:
+        if fd == 352:
             self.line_receiver.dataReceived(data)
         else:
-            super(GunicornProcessProtocol, self).childDataReceived(fd, data)
+            ProcessProtocol.childDataReceived(self, fd, data)
 
     def processEnded(self, reason):
         self.running = False
@@ -108,9 +113,6 @@ class GunicornProcessProtocol(ProcessProtocol):
         else:
             log.msg('not respawning gunicorn for app %s' % (self.mamayo_app.name,))
 
-    def set_port(self, port):
-        self.mamayo_app.runner_port = port
-
     def destroy(self):
         self._cancel_respawn()
         self.should_respawn = False
@@ -118,3 +120,13 @@ class GunicornProcessProtocol(ProcessProtocol):
             return
         self.transport.loseConnection()
         self.transport.signalProcess("TERM")
+
+    ### Commands passed up from the child process
+
+    def set_port(self, port):
+        self.mamayo_app.runner_port = port
+
+    def track_request_done(self):
+        # TODO: minor problem here: gunicorn's workers have all their fds
+        # closed and can't talk to us.  oops.
+        self.mamayo_app.requests_finished += 1

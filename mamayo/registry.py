@@ -2,6 +2,7 @@ from itertools import chain
 
 from mamayo.application import MamayoChildApplication
 from mamayo.errors import NoSuchApplicationError
+from mamayo.util import SoftHardScheduler
 
 try:
     from twisted.internet.inotify import INotify
@@ -11,7 +12,7 @@ try:
 except ImportError:
     INotify = None
 
-from twisted.internet import task
+from twisted.internet import task, reactor
 from twisted.python import log
 
 def looks_like_application(path):
@@ -24,6 +25,9 @@ class ApplicationRegistry(object):
     """I track all the known applications."""
 
     application_factory = MamayoChildApplication
+    poll_interval = 5
+    rescan_soft_delay = 5
+    rescan_hard_delay = 20
 
     def __init__(self, wsgi_root):
         self.wsgi_root = wsgi_root
@@ -49,6 +53,8 @@ class ApplicationRegistry(object):
 
     if INotify is not None:
         def watch(self):
+            self._scheduler = SoftHardScheduler(
+                reactor, self.rescan_soft_delay, self.rescan_hard_delay, self.scan)
             notifier = INotify()
             notifier.startReading()
             notifier.watch(self.wsgi_root,
@@ -57,7 +63,7 @@ class ApplicationRegistry(object):
     else:
         def watch(self):
             self._scan_looper = task.LoopingCall(self.scan)
-            self._scan_looper.start(5)
+            self._scan_looper.start(self.poll_interval)
 
     def _debug_notify(self, notifier, path, mask):
         from twisted.internet.inotify import humanReadableMask
@@ -88,31 +94,7 @@ class ApplicationRegistry(object):
         del self.application_name_map[app.name]
 
     def on_fs_change(self, notifier, path, mask):
-        # TODO inotify is hard.  in the case of a move, we only get one
-        # event...
-        if path.exists():
-            # TODO as written, this will reload an app every time every one of
-            # its files changes, which is Very Bad when an app is being updated
-            for ancestor in chain([path], path.parents()):
-                if looks_like_application(ancestor):
-                    break
-            else:
-                return
-
-            self.register(ancestor)
-        else:
-            if not path.isdir():
-                path = path.parent()
-
-            try:
-                key = tuple(path.segmentsFrom(self.wsgi_root))
-            except ValueError:
-                # Either the WSGI root itself, or a parent (somehow!)
-                return
-
-            if key in self.applications:
-                log.msg("Removing child application at", path)
-                self._unregister_by_key(key)
+        self._scheduler.schedule()
 
     def application_from_segments(self, segments):
         app = self.applications.get(tuple(segments))

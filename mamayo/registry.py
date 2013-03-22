@@ -80,7 +80,6 @@ class ApplicationRegistry(object):
     def unregister(self, path):
         key = tuple(path.segmentsFrom(self.wsgi_root))
         app = self.applications[key]
-        import pdb; pdb.set_trace()
         self.applications[key].destroy()
         del self.applications[key]
         del self.application_name_map[app.name]

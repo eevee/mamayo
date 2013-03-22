@@ -3,6 +3,7 @@ import os
 from twisted.internet.protocol import ProcessProtocol
 from twisted.protocols.basic import LineReceiver
 from twisted.python.filepath import FilePath
+from twisted.python import log
 
 class AdHocCommandParser(LineReceiver):
     """I implement a micro-protocol for communicating with a WSGI runner child.
@@ -28,14 +29,20 @@ class AdHocCommandParser(LineReceiver):
 
 
 class GunicornProcessProtocol(ProcessProtocol):
-    def __init__(self, mamayo_app, path):
+    respawn_delay = 2
+    should_respawn = True
+
+    _respawn_delayed_call = None
+
+    def __init__(self, mamayo_app, path, reactor):
         self.mamayo_app = mamayo_app
         self.path = path
+        self.reactor = reactor
         self.entry_point = 'application:application'
 
         self.line_receiver = AdHocCommandParser(self)
 
-    def spawn(self, reactor):
+    def spawn(self):
         # Assemble environment: PYTHONPATH needs to start in the app's root
         env = os.environ.copy()
         pythonpath = self.path.path
@@ -45,7 +52,7 @@ class GunicornProcessProtocol(ProcessProtocol):
             env['PYTHONPATH'] = pythonpath
 
         # Spawn us!
-        reactor.spawnProcess(
+        self.reactor.spawnProcess(
             self,
             'gunicorn',
             ['gunicorn',
@@ -66,7 +73,12 @@ class GunicornProcessProtocol(ProcessProtocol):
         else:
             super(GunicornProcessProtocol, self).childDataReceived(fd, data)
 
-    def processEnded(self):
+    def processEnded(self, reason):
+        log.err(reason, 'gunicorn runner for app %s died' % (self.mamayo_app.name,))
+        if self.should_respawn:
+            log.msg('respawning gunicorn for app %s in %ss' % (self.mamayo_app.name,
+                                                               self.respawn_delay))
+            self._respawn_delayed_call = self.reactor.callLater(self.respawn_delay, self.spawn)
         self.mamayo_app.runner_port = None
 
     def set_port(self, port):

@@ -98,3 +98,24 @@ def test_providing_extra_segments_fails():
         e.application_from_segments(['app', 'more'])
     with pytest.raises(NoSuchApplicationError):
         e.application_from_segments(['app', 'more', 'stuff'])
+
+def test_reexploration():
+    "An explorer can re-explore to find new applications."
+    app1 = basic_mamayo_app_directory()
+    app2 = basic_mamayo_app_directory()
+    root = ff.Directory(dict(foo=app1, bar=app2))
+    e = Explorer(root)
+    e.explore()
+    assert {app.path for app in e.applications} == {app1, app2}
+    assert e.application_from_segments(['foo']).path == app1
+    assert e.application_from_segments(['bar']).path == app2
+
+    app3 = basic_mamayo_app_directory()
+    del root.contents['foo']
+    root.contents['baz'] = app3
+    e.explore()
+    assert {app.path for app in e.applications} == {app2, app3}
+    with pytest.raises(NoSuchApplicationError):
+        e.application_from_segments(['foo'])
+    assert e.application_from_segments(['bar']).path == app2
+    assert e.application_from_segments(['baz']).path == app3

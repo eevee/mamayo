@@ -14,6 +14,7 @@ class Explorer(object):
 
     def explore(self):
         self.applications = set()
+        self.segments_to_application_map = {}
         for path in self.wsgi_root.walk(is_not_application):
             if is_not_application(path):
                 continue

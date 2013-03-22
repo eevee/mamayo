@@ -34,6 +34,16 @@ class MamayoChildApplication(object):
         else:
             return ReverseProxyResource('localhost', self.runner_port, "/")
 
+    def destroy(self):
+        """Kill me off!"""
+        # TODO should this wait X time for the child to perhaps finish handling
+        # its requests?
+        if self.runner:
+            self.runner.transport.loseConnection()
+            self.runner.transport.signalProcess("TERM")
+            self.runner = None
+            self.runner_port = None
+
 
 class MamayoDispatchResource(Resource):
     def __init__(self, explorer):

@@ -89,12 +89,12 @@ class GunicornProcessProtocol(ProcessProtocol):
 
     def processEnded(self, reason):
         self.running = False
+        self.mamayo_app.runner_port = None
         log.err(reason, 'gunicorn runner for app %s died' % (self.mamayo_app.name,))
         if self.should_respawn:
             log.msg('respawning gunicorn for app %s in %ss' % (self.mamayo_app.name,
                                                                self.respawn_delay))
             self._respawn_delayed_call = self.reactor.callLater(self.respawn_delay, self.spawn)
-        self.mamayo_app.runner_port = None
 
     def set_port(self, port):
         self.mamayo_app.runner_port = port

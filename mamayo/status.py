@@ -1,6 +1,19 @@
+from calendar import timegm
+import json
+
+from mako.lookup import TemplateLookup
+
+from twisted.python.filepath import FilePath
 from twisted.web.resource import Resource, NoResource
 from twisted.web.static import File
 from twisted.web.template import tags, renderElement
+
+LOOKUP = TemplateLookup(
+    directories=[
+        FilePath(__file__).parent().child('templates').path,
+    ],
+    output_encoding='utf8',
+)
 
 class ApplicationStatusResource(Resource):
     def __init__(self, application):
@@ -14,23 +27,23 @@ class ApplicationStatusResource(Resource):
 
     def render_GET(self, request):
         app = self.application
-        body = tags.body(
-            tags.h1(app.name),
-            tags.dl(
-                tags.dt('Location'),
-                tags.dd(app.path.path),
-                tags.dt('Status'),
-                tags.dd('Running' if app.running else 'Not running'),
-                tags.dt('Requests served'),
-                tags.dd(str(app.requests_finished)),
-                tags.dt('Request histogram'),
-                tags.dd(repr(app.request_histogram)),
-            ),
-            tags.form(
-                tags.button('Respawn runner', name='action', value='respawn'),
-                method='post',
-                action=''))
-        return renderElement(request, body)
+
+        # Build a flot-compatible JSON blob
+        flot_series = dict(
+            data=[],
+            label='Request count',
+        )
+        for dt, count in sorted(app.request_histogram.items()):
+            flot_series['data'].append([
+                timegm(dt.timetuple()) * 1000,
+                count,
+            ])
+
+        return LOOKUP.get_template('app-status.mako').render(
+            request=request,
+            app=app,
+            flot_data=json.dumps([flot_series]),
+        )
 
     def render_POST(self, request):
         action = request.args.get('action', [None])[0]

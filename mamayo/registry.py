@@ -67,9 +67,7 @@ class ApplicationRegistry(object):
         name = '.'.join(['root'] + [segment.replace('.', '..') for segment in key])
 
         if key in self.applications:
-            self.applications[key].destroy()
-            del self.applications[key]
-            del self.application_name_map[name]
+            self._unregister_by_key(key)
 
         assert name not in self.application_name_map
         app = MamayoChildApplication(path, name)
@@ -79,6 +77,9 @@ class ApplicationRegistry(object):
 
     def unregister(self, path):
         key = tuple(path.segmentsFrom(self.wsgi_root))
+        self._unregister_by_key(key)
+
+    def _unregister_by_key(self, key):
         app = self.applications[key]
         self.applications[key].destroy()
         del self.applications[key]
@@ -109,7 +110,7 @@ class ApplicationRegistry(object):
 
             if key in self.applications:
                 log.msg("Removing child application at", path)
-                self.unregister(path)
+                self._unregister_by_key(key)
 
     def application_from_segments(self, segments):
         app = self.applications.get(tuple(segments))

@@ -10,7 +10,7 @@ from twisted.web.template import tags, renderElement
 
 LOOKUP = TemplateLookup(
     directories=[
-        FilePath(__file__).parent().child('templates').path,
+        FilePath(__file__).sibling('templates').path,
     ],
     output_encoding='utf8',
 )
@@ -73,6 +73,7 @@ class MamayoStatusResource(Resource):
         Resource.__init__(self)
         self.registry = registry
         self.putChild('', ApplicationListResource(self.registry))
+        self.putChild('static', File(FilePath(__file__).sibling('static').path))
 
     def getChild(self, name, request):
         app = self.registry.application_name_map.get(name)

@@ -61,6 +61,8 @@ class ApplicationRegistry(object):
         app.spawn_runner()
 
     def on_fs_change(self, notifier, path, mask):
+        # TODO inotify is hard.  in the case of a move, we only get one
+        # event...
         if path.exists():
             # TODO as written, this will reload an app every time every one of
             # its files changes, which is Very Bad when an app is being updated
@@ -75,7 +77,12 @@ class ApplicationRegistry(object):
             if not path.isdir():
                 path = path.parent()
 
-            key = tuple(path.segmentsFrom(self.wsgi_root))
+            try:
+                key = tuple(path.segmentsFrom(self.wsgi_root))
+            except ValueError:
+                # Either the WSGI root itself, or a parent (somehow!)
+                return
+
             if key in self.applications:
                 log.msg("Removing child application at", path)
                 self.applications[key].destroy()

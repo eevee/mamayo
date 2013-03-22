@@ -2,10 +2,8 @@
 <html>
 <head>
     <meta charset="utf8">
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-    ## XXX this is so rude
-    <script src="http://www.flotcharts.org/javascript/jquery.flot.min.js"></script>
-    <script src="http://www.flotcharts.org/flot/jquery.flot.time.js"></script>
+    <script src="/.well-known/mamayo/static/js/jquery-1.8.3.js"></script>
+    <script src="/.well-known/mamayo/static/js/jquery.flot-0.7.js"></script>
 
     <script type="text/javascript">
         $(function() {
@@ -13,6 +11,8 @@
                 xaxis: {
                     mode: "time",
                     timezone: "browser",
+                    // ticks always 30s apart
+                    minTickSize: [30, "second"],
                 },
                 yaxis: {
                     min: 0,
@@ -30,8 +30,13 @@
         });
     </script>
 
-    <link rel="stylesheet" type="text/css" href="http://beta.veekun.com/css/archetype.css">
+    <link rel="stylesheet" type="text/css" href="/.well-known/mamayo/static/css/archetype.css">
     <style type="text/css">
+        /* defeat archetype oops */
+        table {
+            width: auto;
+        }
+
         body {
             font-family: Ubuntu, "DejaVu Sans", Arial, sans-serif;
             font-size: 14px;

@@ -1,8 +1,6 @@
 from mamayo.application import MamayoApplication
 from mamayo.errors import NoSuchApplicationError
 
-import operator
-
 def is_not_application(path):
     return not path.child('application.wsgi').exists()
 
@@ -12,6 +10,7 @@ class Explorer(object):
     def __init__(self, wsgi_root):
         self.wsgi_root = wsgi_root
         self.applications = set()
+        self.segments_to_application_map = {}
 
     def explore(self):
         self.applications = set()
@@ -19,14 +18,12 @@ class Explorer(object):
             if is_not_application(path):
                 continue
             segments_between = path.segmentsFrom(self.wsgi_root)
-            app = MamayoApplication(path, segments_between)
+            app = MamayoApplication(path)
+            self.segments_to_application_map[tuple(segments_between)] = app
             self.applications.add(app)
 
     def application_from_segments(self, segments):
-        sorted_applications = sorted(
-            self.applications, key=operator.attrgetter('segment_count'), reverse=True)
-        for app in sorted_applications:
-            truncated_segments = segments[:app.segment_count]
-            if truncated_segments == app.leading_segments:
-                return app
-        raise NoSuchApplicationError()
+        app = self.segments_to_application_map.get(tuple(segments))
+        if app is None:
+            raise NoSuchApplicationError()
+        return app

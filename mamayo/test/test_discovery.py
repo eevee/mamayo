@@ -76,8 +76,6 @@ def test_nested_applications_fails():
     e.explore()
     assert {app.path for app in e.applications} == {app1}
     assert e.application_from_segments(['foo']).path == app1
-    assert e.application_from_segments(['foo', 'bar']).path == app1
-    assert e.application_from_segments(['foo', 'bar', 'baz']).path == app1
 
 def test_fetching_nonextant_applications():
     "application_from_segments raises NoSuchApplicationError on failure."
@@ -90,11 +88,13 @@ def test_fetching_nonextant_applications():
     with pytest.raises(NoSuchApplicationError):
         e.application_from_segments(['not-app'])
 
-def test_providing_extra_segments():
-    "application_from_segments allows extra segments after the application."
+def test_providing_extra_segments_fails():
+    "application_from_segments does not allow extra segments after the application."
     app = basic_mamayo_app_directory()
     root = ff.Directory(dict(app=app))
     e = Explorer(root)
     e.explore()
-    assert e.application_from_segments(['app', 'more']).path == app
-    assert e.application_from_segments(['app', 'more', 'stuff']).path == app
+    with pytest.raises(NoSuchApplicationError):
+        e.application_from_segments(['app', 'more'])
+    with pytest.raises(NoSuchApplicationError):
+        e.application_from_segments(['app', 'more', 'stuff'])

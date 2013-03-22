@@ -1,10 +1,16 @@
 from twisted.web.resource import Resource, NoResource
+from twisted.web.static import File
 from twisted.web.template import tags, renderElement
 
 class ApplicationStatusResource(Resource):
     def __init__(self, application):
         Resource.__init__(self)
         self.application = application
+
+    def getChild(self, name, request):
+        if name == 'log' and self.application.log_path is not None:
+            return File(self.application.log_path.path, 'text/plain; charset=utf8')
+        return NoResource()
 
     def render_GET(self, request):
         app = self.application

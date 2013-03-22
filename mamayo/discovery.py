@@ -19,6 +19,8 @@ class Explorer(object):
                 continue
             segments_between = path.segmentsFrom(self.wsgi_root)
             app = MamayoChildApplication(path)
+            app.spawn_runner()
+            # TODO smartly kill runners on subsequent explores
             self.segments_to_application_map[tuple(segments_between)] = app
             self.applications.add(app)
 

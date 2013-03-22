@@ -1,16 +1,36 @@
-from mamayo.errors import NoSuchApplicationError
-
+from twisted.internet import reactor
+from twisted.web.proxy import ReverseProxyResource
 from twisted.web.resource import Resource, NoResource
-from twisted.web.static import Data
+
+from mamayo.errors import NoSuchApplicationError
+from mamayo.process_herding import GunicornProcessProtocol
+
+_no_resource = NoResource()
 
 class MamayoChildApplication(object):
     def __init__(self, path):
         self.path = path
+        self.runner_port = None
+
+    def spawn_runner(self):
+        """Run the WSGI runner in a child process."""
+        # TODO sooo if the process dies, it should restart, /but/ it should
+        # avoid an awful restart loop.  **AND** it should log the failure
+        # somewhere and the 404 should change to match.
+        proc = GunicornProcessProtocol(self, self.path)
+        proc.spawn(reactor)
 
     def as_resource(self):
-        return Data(repr(self.path), 'text/plain')
+        # TODO there's a delay before gunicorn actually finishes starting; Do
+        # Something in the meantime?
+        if self.runner_port is None:
+            # TODO should distinguish this from a 404: either the child has yet
+            # to start, or it /won't/ start, or we don't recognize this
+            # endpoint as a wsgi app
+            return _no_resource
+        else:
+            return ReverseProxyResource('localhost', self.runner_port, "/")
 
-_no_resource = NoResource()
 
 class MamayoDispatchResource(Resource):
     def __init__(self, explorer):

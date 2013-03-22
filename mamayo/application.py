@@ -11,9 +11,10 @@ from mamayo.process_herding import GunicornProcessProtocol
 _no_resource = NoResource()
 
 class MamayoChildApplication(object):
-    def __init__(self, path, name, log_path=None):
+    def __init__(self, path, name, mount_url='/', log_path=None):
         self.path = path
         self.name = name
+        self.mount_url = mount_url
         self.log_path = log_path
         self.runner = None
         self.runner_port = None
@@ -47,7 +48,7 @@ class MamayoChildApplication(object):
             return _no_resource
         else:
             self.log_request()
-            return ReverseProxyResource('localhost', self.runner_port, "/")
+            return ReverseProxyResource('localhost', self.runner_port, self.mount_url)
 
     def log_request(self):
         """Remember that a request happened, like, right now."""

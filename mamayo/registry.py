@@ -73,12 +73,13 @@ class ApplicationRegistry(object):
         log.msg("Registering child application at", path)
         key = tuple(path.segmentsFrom(self.wsgi_root))
         name = '.'.join(['root'] + [segment.replace('.', '..') for segment in key])
+        mount_url = '/'.join(('',) + key)
 
         if key in self.applications:
             self._unregister_by_key(key)
 
         assert name not in self.application_name_map
-        app = self.application_factory(path, name)
+        app = self.application_factory(path=path, name=name, mount_url=mount_url)
         self.applications[key] = app
         self.application_name_map[name] = app
         app.spawn_runner()

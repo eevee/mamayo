@@ -71,6 +71,7 @@ class GunicornProcessProtocol(ProcessProtocol):
             env['PYTHONPATH'] = pythonpath + ':' + env['PYTHONPATH']
         else:
             env['PYTHONPATH'] = pythonpath
+        env['SCRIPT_NAME'] = self.mamayo_app.mount_url
 
         # fd 352 and 353 are used as an out-of-band comm channel
         child_fds = {0: 0, 1: 1, 2: 2, 352: "r", 353: "w"}

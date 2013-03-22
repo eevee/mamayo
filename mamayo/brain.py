@@ -30,12 +30,12 @@ class Brain(service.MultiService):
 
         self.web_site = Site(self.web_root)
 
-    def create_application(self, path, name):
+    def create_application(self, name, **kwargs):
         app_log_directory = self.log_root.child(name)
         if not app_log_directory.exists():
             app_log_directory.createDirectory()
         app_log = app_log_directory.child('current')
-        return MamayoChildApplication(path, name, app_log)
+        return MamayoChildApplication(name=name, log_path=app_log, **kwargs)
 
     def startService(self):
         service.MultiService.startService(self)

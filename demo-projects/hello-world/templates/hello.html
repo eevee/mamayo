@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf8">
+    <style type="text/css">
+        body {
+            font-size: 24px;
+
+            font-family: Georgia, "Times New Roman", serif;
+            text-align: center;
+            color: #404040;
+            background: #e0e0e0;
+        }
+        section {
+            height: 4em;
+            margin-top: 300px;
+        }
+    </style>
+</head>
+<body>
+    <section>
+        <p>Hello, world!</p>
+
+        <p>The current time is {{ now.strftime("%I:%M %p, %A, %B %d, %Y") }}.</p>
+    </section>
+</body>
+</html>

@@ -11,6 +11,7 @@ class MamayoChildApplication(object):
     def __init__(self, path, name):
         self.path = path
         self.name = name
+        self.runner = None
         self.runner_port = None
 
     def spawn_runner(self):
@@ -18,8 +19,9 @@ class MamayoChildApplication(object):
         # TODO sooo if the process dies, it should restart, /but/ it should
         # avoid an awful restart loop.  **AND** it should log the failure
         # somewhere and the 404 should change to match.
-        proc = GunicornProcessProtocol(self, self.path, reactor)
-        proc.spawn()
+        if self.runner is None:
+            self.runner = GunicornProcessProtocol(self, self.path, reactor)
+        self.runner.spawn()
 
     def as_resource(self):
         # TODO there's a delay before gunicorn actually finishes starting; Do

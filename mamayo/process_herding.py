@@ -1,5 +1,6 @@
 import os
 
+from twisted.internet.error import AlreadyCalled
 from twisted.internet.protocol import ProcessProtocol
 from twisted.protocols.basic import LineReceiver
 from twisted.python.filepath import FilePath
@@ -39,10 +40,22 @@ class GunicornProcessProtocol(ProcessProtocol):
         self.path = path
         self.reactor = reactor
         self.entry_point = 'application:application'
+        self.running = False
 
         self.line_receiver = AdHocCommandParser(self)
 
     def spawn(self):
+        if self.running:
+            return
+
+        # If we were waiting to respawn, spawn immediately instead
+        if self._respawn_delayed_call is not None:
+            try:
+                self._respawn_delayed_call.cancel()
+            except AlreadyCalled:
+                pass
+        self._respawn_delayed_call = None
+
         # Assemble environment: PYTHONPATH needs to start in the app's root
         env = os.environ.copy()
         pythonpath = self.path.path
@@ -63,6 +76,7 @@ class GunicornProcessProtocol(ProcessProtocol):
             childFDs={0: 0, 1: 1, 2: 2, 3: "r", 4: "w"},
             env=env,
         )
+        self.running = True
 
     def connectionMade(self):
         self.transport.closeStdin()
@@ -74,6 +88,7 @@ class GunicornProcessProtocol(ProcessProtocol):
             super(GunicornProcessProtocol, self).childDataReceived(fd, data)
 
     def processEnded(self, reason):
+        self.running = False
         log.err(reason, 'gunicorn runner for app %s died' % (self.mamayo_app.name,))
         if self.should_respawn:
             log.msg('respawning gunicorn for app %s in %ss' % (self.mamayo_app.name,

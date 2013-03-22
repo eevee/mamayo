@@ -1,4 +1,5 @@
 from calendar import timegm
+from datetime import datetime, timedelta
 import json
 
 from mako.lookup import TemplateLookup
@@ -15,6 +16,37 @@ LOOKUP = TemplateLookup(
     output_encoding='utf8',
 )
 
+def build_flot_data(app):
+    # Build a flot-compatible JSON blob
+    flot_data = []
+    flot_series = dict(
+        data=flot_data,
+        label='Request count',
+    )
+
+    time = app.round_time(datetime.utcnow())
+    dt = timedelta(seconds=app.HISTOGRAM_BUCKET_SIZE)
+    for _ in range(30):
+        flot_data.append([
+            timegm(time.timetuple()) * 1000,
+            app.request_histogram.get(time, 0),
+        ])
+
+        time -= dt
+    flot_data.reverse()
+
+    return [flot_series]
+
+class ApplicationHistogramResource(Resource):
+    def __init__(self, application):
+        Resource.__init__(self)
+        self.application = application
+
+    def render_GET(self, request):
+        request.setHeader('Content-Type', 'text/json')
+
+        return json.dumps(build_flot_data(self.application))
+
 class ApplicationStatusResource(Resource):
     def __init__(self, application):
         Resource.__init__(self)
@@ -23,21 +55,12 @@ class ApplicationStatusResource(Resource):
     def getChild(self, name, request):
         if name == 'log' and self.application.log_path is not None:
             return File(self.application.log_path.path, 'text/plain; charset=utf8')
+        elif name == 'chartdata.json':
+            return ApplicationHistogramResource(self.application)
         return NoResource()
 
     def render_GET(self, request):
         app = self.application
-
-        # Build a flot-compatible JSON blob
-        flot_series = dict(
-            data=[],
-            label='Request count',
-        )
-        for dt, count in sorted(app.request_histogram.items()):
-            flot_series['data'].append([
-                timegm(dt.timetuple()) * 1000,
-                count,
-            ])
 
         log_size = None
         if self.application.log_path is not None:
@@ -46,7 +69,7 @@ class ApplicationStatusResource(Resource):
         return LOOKUP.get_template('app-status.mako').render(
             request=request,
             app=app,
-            flot_data=json.dumps([flot_series]),
+            flot_data=json.dumps(build_flot_data(app)),
             log_size=log_size,
         )
 

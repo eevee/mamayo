@@ -6,28 +6,40 @@
     <script src="/.well-known/mamayo/static/js/jquery.flot-0.7.js"></script>
 
     <script type="text/javascript">
+        var histogram_size = ${app.HISTOGRAM_BUCKET_SIZE};
+        var histogram_options = {
+            xaxis: {
+                mode: "time",
+                timezone: "browser",
+                minTickSize: [histogram_size, "second"],
+            },
+            yaxis: {
+                min: 0,
+                minTickSize: 1,
+            },
+            series: {
+                bars: {
+                    show: true,
+                    fill: true,
+                    barWidth: histogram_size * 1000,
+                },
+            },
+        };
+        var histogram_redraw = function(data) {
+            $.plot('#requests-histogram', data, histogram_options);
+        };
+
         $(function() {
-            $.plot('#requests-histogram', ${flot_data}, {
-                xaxis: {
-                    mode: "time",
-                    timezone: "browser",
-                    // ticks always 30s apart
-                    minTickSize: [30, "second"],
-                },
-                yaxis: {
-                    min: 0,
-                    minTickSize: 1,
-                },
-                series: {
-                    bars: {
-                        show: true,
-                        fill: true,
-                        // width is 30 seconds
-                        barWidth: 30 * 1000,
-                    },
-                },
-            });
+            histogram_redraw(${flot_data});
         });
+
+        setInterval(function() {
+                $.getJSON('/.well-known/mamayo/${app.name}/chartdata.json')
+                .done(histogram_redraw);
+            },
+            histogram_size * 1000
+        );
+
     </script>
 
     <link rel="stylesheet" type="text/css" href="/.well-known/mamayo/static/css/archetype.css">

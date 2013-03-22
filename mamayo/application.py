@@ -11,6 +11,9 @@ from mamayo.process_herding import GunicornProcessProtocol
 _no_resource = NoResource()
 
 class MamayoChildApplication(object):
+    # Number of seconds in each histogram bit
+    HISTOGRAM_BUCKET_SIZE = 10
+
     def __init__(self, path, name, mount_url='/', log_path=None):
         self.path = path
         self.name = name
@@ -50,13 +53,18 @@ class MamayoChildApplication(object):
             self.log_request()
             return ReverseProxyResource('localhost', self.runner_port, self.mount_url)
 
+    def round_time(self, dt):
+        """Round a time to the nearest histogram point."""
+        return dt.replace(
+            microsecond=0,
+            second=dt.second - dt.second % self.HISTOGRAM_BUCKET_SIZE)
+
     def log_request(self):
         """Remember that a request happened, like, right now."""
         # TODO candidate for breaking out into a (more persistent) stats object
         # once we know what all this is going to do
         self.requests_finished += 1
-        now = datetime.utcnow()
-        now = now.replace(microsecond=0, second=now.second - now.second % 30)
+        now = self.round_time(datetime.utcnow())
         self.request_histogram[now] += 1
 
     def destroy(self):

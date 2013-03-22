@@ -1,4 +1,4 @@
-from mamayo.application import MamayoApplication
+from mamayo.application import MamayoChildApplication
 from mamayo.errors import NoSuchApplicationError
 
 def is_not_application(path):
@@ -18,7 +18,7 @@ class Explorer(object):
             if is_not_application(path):
                 continue
             segments_between = path.segmentsFrom(self.wsgi_root)
-            app = MamayoApplication(path)
+            app = MamayoChildApplication(path)
             self.segments_to_application_map[tuple(segments_between)] = app
             self.applications.add(app)
 

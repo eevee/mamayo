@@ -3,7 +3,7 @@ from mamayo.errors import NoSuchApplicationError
 from twisted.web.resource import Resource, NoResource
 from twisted.web.static import Data
 
-class MamayoApplication(object):
+class MamayoChildApplication(object):
     def __init__(self, path):
         self.path = path
 

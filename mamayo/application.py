@@ -48,6 +48,10 @@ class MamayoChildApplication(object):
             self.runner.destroy()
             self.runner_port = None
 
+    @property
+    def running(self):
+        return self.runner is not None and self.runner.running
+
 
 class MamayoDispatchResource(Resource):
     def __init__(self, explorer):

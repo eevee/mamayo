@@ -7,8 +7,25 @@ class ApplicationStatusResource(Resource):
         self.application = application
 
     def render_GET(self, request):
-        body = tags.body(tags.p(repr(self.application)))
+        app = self.application
+        body = tags.body(
+            tags.h1(app.name),
+            tags.dl(
+                tags.dt('Location'),
+                tags.dd(app.path.path),
+                tags.dt('Status'),
+                tags.dd('Running' if app.running else 'Not running')),
+            tags.form(
+                tags.button('Respawn runner', name='action', value='respawn'),
+                method='post',
+                action=''))
         return renderElement(request, body)
+
+    def render_POST(self, request):
+        action = request.args.get('action', [None])[0]
+        if action == 'respawn':
+            self.application.respawn_runner()
+        return self.render_GET(request)
 
 class ApplicationListResource(Resource):
     def __init__(self, registry):

@@ -23,6 +23,12 @@ class MamayoChildApplication(object):
             self.runner = GunicornProcessProtocol(self, self.path, reactor)
         self.runner.spawn()
 
+    def respawn_runner(self):
+        if self.runner is None:
+            self.spawn_runner()
+        else:
+            self.runner.respawn()
+
     def as_resource(self):
         # TODO there's a delay before gunicorn actually finishes starting; Do
         # Something in the meantime?

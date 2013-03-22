@@ -81,6 +81,13 @@ class GunicornProcessProtocol(ProcessProtocol):
         )
         self.running = True
 
+    def respawn(self):
+        if self.running:
+            self.transport.loseConnection()
+            self.transport.signalProcess("TERM")
+        else:
+            self.spawn()
+
     def connectionMade(self):
         self.transport.closeStdin()
 

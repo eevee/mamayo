@@ -23,6 +23,8 @@ def is_not_application(path):
 class ApplicationRegistry(object):
     """I track all the known applications."""
 
+    application_factory = MamayoChildApplication
+
     def __init__(self, wsgi_root):
         self.wsgi_root = wsgi_root
         self.applications = dict()  # segments => child app
@@ -70,7 +72,7 @@ class ApplicationRegistry(object):
             self._unregister_by_key(key)
 
         assert name not in self.application_name_map
-        app = MamayoChildApplication(path, name)
+        app = self.application_factory(path, name)
         self.applications[key] = app
         self.application_name_map[name] = app
         app.spawn_runner()

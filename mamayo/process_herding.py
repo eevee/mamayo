@@ -72,6 +72,14 @@ class GunicornProcessProtocol(ProcessProtocol):
         else:
             env['PYTHONPATH'] = pythonpath
 
+        # fd 352 and 353 are used as an out-of-band comm channel
+        child_fds = {0: 0, 1: 1, 2: 2, 352: "r", 353: "w"}
+        if self.mamayo_app.log_path is not None:
+            # TODO maybe explicitly close this in the parent instead of relying
+            # on gc
+            log_file = self.mamayo_app.log_path.open('a')
+            child_fds[1] = child_fds[2] = log_file.fileno()
+
         # Spawn us!
         self.reactor.spawnProcess(
             self,
@@ -80,8 +88,7 @@ class GunicornProcessProtocol(ProcessProtocol):
                 '-c', FilePath(__file__).parent().child('gunicorn_config.conf.py').path,
                 self.entry_point,
             ],
-            # fd 352 and 353 are used as an out-of-band comm channel
-            childFDs={0: 0, 1: 1, 2: 2, 352: "r", 353: "w"},
+            childFDs=child_fds,
             env=env,
         )
         self.running = True

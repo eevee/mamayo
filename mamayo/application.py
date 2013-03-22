@@ -11,9 +11,10 @@ from mamayo.process_herding import GunicornProcessProtocol
 _no_resource = NoResource()
 
 class MamayoChildApplication(object):
-    def __init__(self, path, name):
+    def __init__(self, path, name, log_path=None):
         self.path = path
         self.name = name
+        self.log_path = log_path
         self.runner = None
         self.runner_port = None
 
